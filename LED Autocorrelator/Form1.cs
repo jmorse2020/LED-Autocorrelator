@@ -328,49 +328,117 @@ namespace LED_Autocorrelator
                 return visaResource;
             }
         }
-        private void ConnectToScope(string ResourceName)
-        {
-            //LogMessage("Connecting to scope ...");
-            NotificationMessage("Connecting to scope ...");
-            bool scopeConnected = false;
-            // Separate try-catch for the instrument initialization prevents accessing uninitialized object
-            try
-            {
-                // Initialization:
-                //GetScopeName();
-                io = GlobalResourceManager.Open(ResourceName) as IMessageBasedSession;
-                io.Clear();
-                // Timeout for VISA Read Operations
-                Thread.Sleep(250);
-                io.TimeoutMilliseconds = 10000;
-            }
-            catch (NativeVisaException e)
-            {
-                ErrorMessage("Unable to connect to scope");
-                NotificationMessage("Unable to connet to scope");
-                //LogMessage($"Error initializing the io session:\n{e.Message}");
-                return;
-            }
+        //private void ConnectToScope(string ResourceName) // Original working connect To scope function
+        //{
+        //    //LogMessage("Connecting to scope ...");
+        //    NotificationMessage("Connecting to scope ...");
+        //    bool scopeConnected = false;
+        //    // Separate try-catch for the instrument initialization prevents accessing uninitialized object
+        //    try
+        //    {
+        //        // Initialization:
+        //        //GetScopeName();
+        //        io = GlobalResourceManager.Open(ResourceName) as IMessageBasedSession;
+        //        io.Clear();
+        //        // Timeout for VISA Read Operations
+        //        Thread.Sleep(250);
+        //        io.TimeoutMilliseconds = 10000;
+        //    }
+        //    catch (NativeVisaException e)
+        //    {
+        //        ErrorMessage("Unable to connect to scope");
+        //        NotificationMessage("Unable to connet to scope");
+        //        //LogMessage($"Error initializing the io session:\n{e.Message}");
+        //        return;
+        //    }
 
+        //    try
+        //    {
+        //        //LogMessage("Ivi GlobalResourceManager selected the following VISA.NET:");
+        //        //LogMessage($"Manufacturer: {io.ResourceManufacturerName}");
+        //        //LogMessage($"Implementation Version: {io.ResourceImplementationVersion}");
+
+        //        io.RawIO.Write("*RST;*CLS"); // Reset the instrument, clear the Error queue
+        //        io.RawIO.Write("*IDN?");
+        //        var idnResponse = io.RawIO.ReadString();
+
+        //        LogMessage($"Scope: {idnResponse} connected");
+        //        scopeConnected = true;
+        //    }
+        //    catch (VisaException e)
+        //    {
+        //        ErrorMessage("Scope not connected");
+        //        //LogMessage($"Error initializing the io session:\n{e.Message}");
+        //    }
+        //    if (scopeConnected)
+        //    {
+        //        ConfigureScope();
+        //    }
+        //}
+
+        private void ConnectToScope(string resourceName) // Joes version with Ethernet fallback
+        {
+            NotificationMessage("Attempting to connect to scope via USB...");
+            bool scopeConnected = false;
+
+            // Try connecting via USB
             try
             {
-                //LogMessage("Ivi GlobalResourceManager selected the following VISA.NET:");
-                //LogMessage($"Manufacturer: {io.ResourceManufacturerName}");
-                //LogMessage($"Implementation Version: {io.ResourceImplementationVersion}");
+                io = GlobalResourceManager.Open(resourceName) as IMessageBasedSession;
+                io.Clear();
+                io.TimeoutMilliseconds = 10000; // Timeout for VISA Read Operations
+                Thread.Sleep(250);
 
                 io.RawIO.Write("*RST;*CLS"); // Reset the instrument, clear the Error queue
                 io.RawIO.Write("*IDN?");
                 var idnResponse = io.RawIO.ReadString();
 
-                LogMessage($"Scope: {idnResponse} connected");
+                LogMessage($"Scope connected successfully via USB. IDN Response: {idnResponse}");
+                NotificationMessage($"Scope connected via USB: {idnResponse}");
                 scopeConnected = true;
             }
-            catch (VisaException e)
+            catch (Exception usbEx)
             {
-                ErrorMessage("Scope not connected");
-                //LogMessage($"Error initializing the io session:\n{e.Message}");
+                ErrorMessage($"USB connection failed: {usbEx.Message}");
+                NotificationMessage("USB connection failed. Attempting Ethernet connection...");
             }
-            if (scopeConnected)
+
+            // If USB connection fails, try Ethernet
+            if (!scopeConnected)
+            {
+                string ipAddress = "169.254.182.112"; // Replace with the actual IP address of the scope
+                string port = "5025"; // Replace with the actual port (e.g., "INSTR" or "5025")
+                string ethernetResource = $"TCPIP::{ipAddress}::{port}";
+
+                try
+                {
+                    io = GlobalResourceManager.Open(ethernetResource) as IMessageBasedSession;
+                    io.Clear();
+                    io.TimeoutMilliseconds = 10000; // Timeout for VISA Read Operations
+                    Thread.Sleep(250);
+
+                    io.RawIO.Write("*RST;*CLS"); // Reset the instrument, clear the Error queue
+                    io.RawIO.Write("*IDN?");
+                    var idnResponse = io.RawIO.ReadString();
+
+                    LogMessage($"Scope connected successfully via Ethernet. IDN Response: {idnResponse}");
+                    NotificationMessage($"Scope connected via Ethernet: {idnResponse}");
+                    scopeConnected = true;
+                }
+                catch (Exception ethernetEx)
+                {
+                    ErrorMessage($"Ethernet connection failed: {ethernetEx.Message}");
+                    NotificationMessage("Failed to connect to scope via both USB and Ethernet.");
+                }
+            }
+
+            // If neither connection method works
+            if (!scopeConnected)
+            {
+                NotificationMessage("Unable to connect to scope.");
+                ErrorMessage("Scope connection failed via both USB and Ethernet.");
+            }
+            else
             {
                 ConfigureScope();
             }
