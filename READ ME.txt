@@ -1,0 +1,30 @@
+************* READ ME **************
+
+SYSTEM REQUIREMENTS:
+- Drivers 
+- Install PI PI_C-891.CD_Setup.exe to install driver for USB
+- Put fit in output directory with the application .exe
+- python3
+- pythonnet (pip package)
+
+KNOWN BUGS : 
+- Motor connection issues, sometimes servo state will not change
+- No way to re-establish connection to Scope
+- Delete 'Motor connected' every time scan runs
+
+DESIRED FEATURES : 
+- Delay between measurements
+- Smooth motor motion
+- Plotting 
+- Saving data
+- Saving settings
+- Fitting gaussian and determining pulse duration
+- Allowing fit of other pulse shapes
+- Background subtraction measurement
+- Constantly checks motor and scope connection state
+- Move motor and scope functions to separate files for better code practice
+- When press identify run the "*IDN?" command
+- App icon
+- Discrete steps vs continuous motion
+
+
